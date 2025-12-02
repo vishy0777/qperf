@@ -202,6 +202,10 @@ int run_client(const char *port, bool gso, const char *logfile, const char *cc, 
     ++next_cid.master_id;
 
     enqueue_request(conn);
+    
+    // Set connection reference for RTT measurements
+    client_stream_set_connection(conn);
+    
     if(!send_pending(&client_ctx, client_socket, conn)) {
         printf("failed to connect: send_pending failed\n");
         exit(1);

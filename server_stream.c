@@ -28,7 +28,11 @@ static void print_report(server_stream *s)
     s->report_num_packets_lost = stats.num_packets.lost - s->total_num_packets_lost;
     s->total_num_packets_sent = stats.num_packets.sent;
     s->total_num_packets_lost = stats.num_packets.lost;
-    printf("connection %i second %i send window: %"PRIu32" packets sent: %"PRIu64" packets lost: %"PRIu64"\n", s->report_id, s->report_second, stats.cc.cwnd, s->report_num_packets_sent, s->report_num_packets_lost);
+    
+    // Calculate RTT
+    double rtt_ms = (double)stats.rtt.smoothed;
+    
+    printf("connection %i second %i send window: %"PRIu32" packets sent: %"PRIu64" packets lost: %"PRIu64" RTT: %.2fms\n", s->report_id, s->report_second, stats.cc.cwnd, s->report_num_packets_sent, s->report_num_packets_lost, rtt_ms);
     fflush(stdout);
     ++s->report_second;
 }
@@ -42,7 +46,14 @@ static void server_stream_destroy(quicly_stream_t *stream, quicly_error_t err)
 {
     server_stream *s = (server_stream*)stream->data;
     print_report(s);
-    printf("connection %i total packets sent: %"PRIu64" total packets lost: %"PRIu64"\n", s->report_id, s->total_num_packets_sent, s->total_num_packets_lost);
+    
+    // Get final RTT stats
+    quicly_stats_t stats;
+    quicly_get_stats(s->stream->conn, &stats);
+    double final_rtt_ms = (double)stats.rtt.smoothed;
+    
+    printf("connection %i total packets sent: %"PRIu64" total packets lost: %"PRIu64" final RTT: %.2fms\n", 
+           s->report_id, s->total_num_packets_sent, s->total_num_packets_lost, final_rtt_ms);
     ev_timer_stop(EV_DEFAULT, &s->report_timer);
     free(s);
 }
